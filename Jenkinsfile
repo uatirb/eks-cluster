@@ -5,38 +5,29 @@ pipeline {
             yaml """
 apiVersion: v1
 kind: Pod
-metadata:
-  labels:
-    app: jenkins-pipeline
 spec:
   containers:
     - name: docker
       image: docker:20.10.24-dind
       securityContext:
-        privileged: true  # Required for Docker-in-Docker
+        privileged: true
       volumeMounts:
-        - name: docker-sock
-          mountPath: /var/run/docker.sock  # Correct mount path for Docker socket
+        - name: docker-graph-storage
+          mountPath: /var/lib/docker
       command:
         - /bin/sh
         - -c
-        - /usr/local/bin/dockerd-entrypoint.sh  # Starts Docker daemon
+        - /usr/local/bin/dockerd-entrypoint.sh
     - name: kubectl
       image: ubuntu:20.04
       securityContext:
-        runAsUser: 0  # Run as root user
-      command:
-        - cat
-      tty: true
-    - name: aws-cli
-      image: amazon/aws-cli:2.13.1
+        runAsUser: 0  # Run as root user (to avoid permission issues)
       command:
         - cat
       tty: true
   volumes:
-    - name: docker-sock
-      hostPath:
-        path: /var/run/docker.sock  # Ensure the socket is mounted from the host
+    - name: docker-graph-storage
+      emptyDir: {}
 """
         }
     }
@@ -58,25 +49,44 @@ spec:
         }
         stage('Login to AWS ECR') {
             steps {
-                container('aws-cli') {
-                    echo "Logging in to AWS ECR"
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding', 
-                        credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
-                    ]]) {
+                container('kubectl') {
+				        withCredentials([[ 
+                            $class: 'AmazonWebServicesCredentialsBinding', 
+                            credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
+                        ]])
+                        // Install Docker
                         sh '''
-                            aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 908027419216.dkr.ecr.us-west-2.amazonaws.com
+                            apt-get update
+							apt-get install -y curl unzip
+                            apt-get install -y docker.io
                         '''
+
+                        // Install AWS CLI
+                        sh '''
+                            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                            unzip awscliv2.zip
+                            ./aws/install
+                            aws --version
+                        '''
+
+                        // Install kubectl
+                        sh '''
+                            curl -LO https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl
+                            chmod +x kubectl
+                            mv kubectl /usr/local/bin/
+                            kubectl version --client
+                        '''
+						sh "docker build -t 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG} ."
                     }
-                }
             }
         }
         stage("Push Images") {
             steps {
                 script {
-                    container('docker') {
+                    container('kubectl') {
                         // Push the image to ECR
                         sh '''
+						    aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 908027419216.dkr.ecr.us-west-2.amazonaws.com
                             docker push 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG}
                         '''
                     }
@@ -94,23 +104,7 @@ spec:
                 }
             }
         }
-        stage('Install kubectl') {
-            steps {
-                script {
-                    container('kubectl') {
-                        // Install kubectl using apt (Ubuntu-based containers)
-                        sh '''
-                            apt-get update
-                            apt-get install -y curl
-                            curl -LO "https://dl.k8s.io/release/v1.26.0/bin/linux/amd64/kubectl"
-                            chmod +x kubectl
-                            mv kubectl /usr/local/bin/kubectl
-                            kubectl version --client
-                        '''
-                    }
-                }
-            }
-        }
+
         stage('Deploy to Kubernetes') {
             steps {
                 script {
