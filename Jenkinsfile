@@ -25,15 +25,15 @@ spec:
       command:
         - cat
       tty: true
-  - name: aws-cli
-    image: amazon/aws-cli:2.13.1
-    command:
-    - cat
-    tty: true
+    - name: aws-cli
+      image: amazon/aws-cli:2.13.1
+      command:
+        - cat
+      tty: true
   volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
 """
         }
     }
