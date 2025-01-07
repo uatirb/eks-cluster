@@ -28,6 +28,7 @@ spec:
   volumes:
     - name: docker-graph-storage
       emptyDir: {}
+      
 """
         }
     }
