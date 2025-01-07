@@ -56,16 +56,7 @@ spec:
                             $class: 'AmazonWebServicesCredentialsBinding', 
                             credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
                         ]]) {
-                            // Log in to AWS ECR
-                            sh '''
-				apk update
-                                apk add --no-cache curl unzip
-				curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                                unzip awscliv2.zip
-                                ./aws/install
-                                aws --version
-                                aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin 908027419216.dkr.ecr.us-west-2.amazonaws.com
-                            '''
+                            
                             // Push the image to ECR
                             sh '''
                                 docker push 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG}
