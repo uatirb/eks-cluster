@@ -10,14 +10,20 @@ spec:
     - name: docker
       image: docker:20.10.24-dind
       securityContext:
-        privileged: true
+        privileged: true  # Ensure the container runs in privileged mode
       volumeMounts:
         - name: docker-graph-storage
           mountPath: /var/lib/docker
+        - name: docker-socket
+          mountPath: /var/run/docker.sock  # Mount the docker socket
       command:
         - /bin/sh
         - -c
-        - /usr/local/bin/dockerd-entrypoint.sh
+        - |
+          # Start Docker daemon in the background
+          dockerd & 
+          # Sleep to keep the container alive
+          tail -f /dev/null
     - name: kubectl
       image: ubuntu:20.04
       securityContext:
@@ -28,6 +34,10 @@ spec:
   volumes:
     - name: docker-graph-storage
       emptyDir: {}
+    - name: docker-socket
+      hostPath:
+        path: /var/run/docker.sock  # Mount the host's Docker socket to allow communication with the Docker daemon
+        type: Socket
 """
         }
     }
