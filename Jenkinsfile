@@ -5,6 +5,9 @@ pipeline {
             yaml """
 apiVersion: v1
 kind: Pod
+metadata:
+  labels:
+    app: jenkins-pipeline
 spec:
   containers:
     - name: docker
@@ -12,8 +15,11 @@ spec:
       securityContext:
         privileged: true
       volumeMounts:
-        - name: docker-graph-storage
-          mountPath: /var/lib/docker
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+        # You can also mount a volume for Docker storage if needed, for example:
+        # - name: docker-graph-storage
+        #   mountPath: /var/lib/docker
       command:
         - /bin/sh
         - -c
@@ -34,9 +40,13 @@ spec:
     - name: docker-sock
       hostPath:
         path: /var/run/docker.sock
+    # Define the docker-graph-storage volume if needed
+    # - name: docker-graph-storage
+    #   emptyDir: {}  # An emptyDir volume can be used if needed for Docker image cache storage
 """
         }
     }
+
     stages {
         stage('Checkout') {
             steps {
@@ -84,7 +94,7 @@ spec:
         stage('Update Deployment YAML') {
             steps {
                 script {
-                    container('ubuntu') {
+                    container('kubectl') {
                         // Replace the old image tag with the new one in the deployment YAML
                         sh "sed -i 's|image: 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v.*|image: 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG}|' ${YAML_FILE}"
                     }
@@ -111,7 +121,7 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    container('ubuntu') {
+                    container('kubectl') {
                         withKubeCredentials(kubectlCredentials: [[
                             caCertificate: '', 
                             clusterName: 'k8-cluster', 
