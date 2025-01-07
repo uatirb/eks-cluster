@@ -73,14 +73,7 @@ spec:
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                container('docker') {
-                    // Build Docker image
-                    sh "docker build -t 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG} ."
-                }
-            }
-        }
+
 
         stage("Push Images to ECR") {
             steps {
@@ -92,6 +85,7 @@ spec:
                     ]]) {
                         sh '''
                             aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 908027419216.dkr.ecr.us-west-2.amazonaws.com
+                            docker build -t 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG} .
                             docker push 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG}
                         '''
                     }
