@@ -41,14 +41,15 @@ spec:
         stage('Login to AWS ECR') {
             steps {
                 container('kubectl') {
-				        withCredentials([[ 
-                            $class: 'AmazonWebServicesCredentialsBinding', 
-                            credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
-                        ]])
+                    // Correct usage of withCredentials
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding', 
+                        credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
+                    ]]) {
                         // Install Docker
                         sh '''
                             apt-get update
-							apt-get install -y curl unzip
+                            apt-get install -y curl unzip
                             apt-get install -y docker.io
                         '''
 
@@ -67,17 +68,30 @@ spec:
                             mv kubectl /usr/local/bin/
                             kubectl version --client
                         '''
-						sh "docker build -t 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG} ."
                     }
+                }
             }
         }
-        stage("Push Images") {
+
+        stage('Build Docker Image') {
             steps {
-                script {
-                    container('kubectl') {
-                        // Push the image to ECR
+                container('docker') {
+                    // Build Docker image
+                    sh "docker build -t 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG} ."
+                }
+            }
+        }
+
+        stage("Push Images to ECR") {
+            steps {
+                container('kubectl') {
+                    // Push the image to ECR
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding', 
+                        credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
+                    ]]) {
                         sh '''
-						    aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 908027419216.dkr.ecr.us-west-2.amazonaws.com
+                            aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 908027419216.dkr.ecr.us-west-2.amazonaws.com
                             docker push 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG}
                         '''
                     }
