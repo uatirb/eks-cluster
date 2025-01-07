@@ -10,20 +10,14 @@ spec:
     - name: docker
       image: docker:20.10.24-dind
       securityContext:
-        privileged: true  # Ensure the container runs in privileged mode
+        privileged: true
       volumeMounts:
         - name: docker-graph-storage
           mountPath: /var/lib/docker
-        - name: docker-socket
-          mountPath: /var/run/docker.sock  # Mount the docker socket
       command:
         - /bin/sh
         - -c
-        - |
-          # Start Docker daemon in the background
-          dockerd & 
-          # Sleep to keep the container alive
-          tail -f /dev/null
+        - /usr/local/bin/dockerd-entrypoint.sh
     - name: kubectl
       image: ubuntu:20.04
       securityContext:
@@ -34,10 +28,6 @@ spec:
   volumes:
     - name: docker-graph-storage
       emptyDir: {}
-    - name: docker-socket
-      hostPath:
-        path: /var/run/docker.sock  # Mount the host's Docker socket to allow communication with the Docker daemon
-        type: Socket
 """
         }
     }
@@ -63,13 +53,7 @@ spec:
                             apt-get install -y docker.io
                         '''
 
-                        // Install AWS CLI
-                        sh '''
-                            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                            unzip awscliv2.zip
-                            ./aws/install
-                            aws --version
-                        '''
+                        
 
                         // Install kubectl
                         sh '''
@@ -87,13 +71,20 @@ spec:
 
         stage("Push Images to ECR") {
             steps {
-                container('kubectl') {
+                container('docker') {
                     // Push the image to ECR
                     withCredentials([[
                         $class: 'AmazonWebServicesCredentialsBinding', 
                         credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
                     ]]) {
                         sh '''
+                            // Install AWS CLI
+                            apk update && apk add --no-cache curl unzip
+                            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                            unzip awscliv2.zip
+                            ./aws/install
+                            aws --version
+                        
                             aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 908027419216.dkr.ecr.us-west-2.amazonaws.com
                             docker build -t 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG} .
                             docker push 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG}
