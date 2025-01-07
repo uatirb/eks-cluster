@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-deployment
+  namespace: web  # Specify the namespace
+spec:
+  replicas: 1  # You can increase this to scale the number of pods
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+      - name: hello-world-container
+        image: 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:latest
+        ports:
+        - containerPort: 80
+      imagePullSecrets:
+      - name: ecr-secret
+
