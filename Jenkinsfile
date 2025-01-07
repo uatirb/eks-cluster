@@ -37,16 +37,7 @@ spec:
                 checkout scm
             }
         }
-        stage("Build Images") {
-            steps {
-                script {
-                    container('docker') {
-                        // Build Docker image inside the Docker container
-                        sh "docker build -t 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG} ."
-                    }
-                }
-            }
-        }
+
         stage('Login to AWS ECR') {
             steps {
                 container('kubectl') {
