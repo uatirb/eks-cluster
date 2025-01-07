@@ -7,23 +7,27 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
-    - name: ubuntu
+    - name: docker
+      image: docker:20.10.24-dind
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: docker-graph-storage
+          mountPath: /var/lib/docker
+      command:
+        - /bin/sh
+        - -c
+        - /usr/local/bin/dockerd-entrypoint.sh
+    - name: kubectl
       image: ubuntu:20.04
       securityContext:
-        runAsUser: 0  # Run as root user
+        runAsUser: 0  # Run as root user (to avoid permission issues)
       command:
         - cat
       tty: true
-      volumeMounts:
-        - mountPath: /var/run/docker.sock
-          name: docker-socket
   volumes:
     - name: docker-graph-storage
       emptyDir: {}
-    - name: docker-socket
-      hostPath:
-        path: /var/run/docker.sock
-        type: Socket
 """
         }
     }
