@@ -45,7 +45,7 @@ spec:
                 script {
                     container('docker') {
                         // Display Docker version inside the Docker container
-                        sh "docker build -t 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:latest ."
+                        sh "docker build -t 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG} ."
                     }
                 }
             }
@@ -69,7 +69,7 @@ spec:
                         '''
                         // Push the image to ECR
                         sh '''
-                            docker push 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:latest
+                            docker push 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG}
                         '''
                     }
                 }
