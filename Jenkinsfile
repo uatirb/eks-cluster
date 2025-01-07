@@ -13,21 +13,18 @@ spec:
     - name: docker
       image: docker:20.10.24-dind
       securityContext:
-        privileged: true
+        privileged: true  # Required for Docker-in-Docker
       volumeMounts:
         - name: docker-sock
-          mountPath: /var/run/docker.sock
-        # You can also mount a volume for Docker storage if needed, for example:
-        # - name: docker-graph-storage
-        #   mountPath: /var/lib/docker
+          mountPath: /var/run/docker.sock  # Correct mount path for Docker socket
       command:
         - /bin/sh
         - -c
-        - /usr/local/bin/dockerd-entrypoint.sh
+        - /usr/local/bin/dockerd-entrypoint.sh  # Starts Docker daemon
     - name: kubectl
       image: ubuntu:20.04
       securityContext:
-        runAsUser: 0  # Run as root user (to avoid permission issues)
+        runAsUser: 0  # Run as root user
       command:
         - cat
       tty: true
@@ -39,14 +36,10 @@ spec:
   volumes:
     - name: docker-sock
       hostPath:
-        path: /var/run/docker.sock
-    # Define the docker-graph-storage volume if needed
-    # - name: docker-graph-storage
-    #   emptyDir: {}  # An emptyDir volume can be used if needed for Docker image cache storage
+        path: /var/run/docker.sock  # Ensure the socket is mounted from the host
 """
         }
     }
-
     stages {
         stage('Checkout') {
             steps {
