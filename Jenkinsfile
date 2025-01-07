@@ -10,7 +10,7 @@ metadata:
 spec:
   containers:
     - name: docker
-      image: docker:20.10.7
+      image: docker:20.10.24-dind
       securityContext:
         runAsUser: 0  # Run as root user to avoid permission issues with Docker
       command:
