@@ -5,29 +5,33 @@ pipeline {
             yaml """
 apiVersion: v1
 kind: Pod
+metadata:
+  labels:
+    app: jenkins-pipeline
 spec:
   containers:
-    - name: docker
-      image: docker:20.10.24-dind
-      securityContext:
-        privileged: true
-      volumeMounts:
-        - name: docker-graph-storage
-          mountPath: /var/lib/docker
-      command:
-        - /bin/sh
-        - -c
-        - /usr/local/bin/dockerd-entrypoint.sh
-    - name: kubectl
-      image: ubuntu:20.04
-      securityContext:
-        runAsUser: 0  # Run as root user (to avoid permission issues)
-      command:
-        - cat
-      tty: true
+  - name: docker
+    image: 20.10.24-dind
+    command:
+    - cat
+    tty: true
+    volumeMounts:
+    - name: docker-sock
+      mountPath: /var/run/docker.sock
+  - name: kubectl
+    image: ubuntu:20.04
+    command:
+    - cat
+    tty: true
+  - name: aws-cli
+    image: amazon/aws-cli:2.13.1
+    command:
+    - cat
+    tty: true
   volumes:
-    - name: docker-graph-storage
-      emptyDir: {}
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
 """
         }
     }
@@ -47,21 +51,29 @@ spec:
                 }
             }
         }
+        stage('Login to AWS ECR') {
+            steps {
+                container('aws-cli') {
+                    echo "Logging in to AWS ECR"
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding', 
+                        credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
+                    ]]) {
+                        sh '''
+                            aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 908027419216.dkr.ecr.us-west-2.amazonaws.com
+                        '''
+                    }
+                }
+            }
+        }
         stage("Push Images") {
             steps {
                 script {
                     container('docker') {
-                        // Use Jenkins credentials to access AWS
-                        withCredentials([[ 
-                            $class: 'AmazonWebServicesCredentialsBinding', 
-                            credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
-                        ]]) {
-                            
-                            // Push the image to ECR
-                            sh '''
-                                docker push 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG}
-                            '''
-                        }
+                        // Push the image to ECR
+                        sh '''
+                            docker push 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG}
+                        '''
                     }
                 }
             }
@@ -77,29 +89,17 @@ spec:
                 }
             }
         }
-		stage('Install kubectl') {
+        stage('Install kubectl') {
             steps {
                 script {
                     container('kubectl') {
-                        // Install kubectl using wget (bypassing apk/curl issues)
+                        // Install kubectl using apt (Ubuntu-based containers)
                         sh '''
-                            # Update package list
                             apt-get update
-                            
-                            # Install curl and other dependencies
-                            apt-get install -y curl 
-                            
-
-                            # Install kubectl
-                            curl -LO "https://dl.k8s.io/release/v1.26.0/bin/linux/amd64/kubectl" 
-							
-                            # Make kubectl executable
+                            apt-get install -y curl
+                            curl -LO "https://dl.k8s.io/release/v1.26.0/bin/linux/amd64/kubectl"
                             chmod +x kubectl
-                            
-                            # Move kubectl to /usr/local/bin/ (requires root privileges)
                             mv kubectl /usr/local/bin/kubectl
-                            
-                            # Verify kubectl installation
                             kubectl version --client
                         '''
                     }
