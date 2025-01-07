@@ -10,21 +10,10 @@ spec:
     - name: ubuntu
       image: ubuntu:20.04
       securityContext:
-        runAsUser: 0  # Run as root user to avoid permission issues
-      volumeMounts:
-        - name: docker-graph-storage
-          mountPath: /var/lib/docker
+        runAsUser: 0  # Run as root user (to avoid permission issues)
       command:
-        - /bin/bash
-        - -c
-        - |
-          apt-get update && apt-get install -y \
-          docker.io \
-          curl \
-          unzip \
-          awscli \
-          kubectl \
-          && tail -f /dev/null  # Keep the container running
+        - cat
+      tty: true
   volumes:
     - name: docker-graph-storage
       emptyDir: {}
@@ -32,10 +21,45 @@ spec:
         }
     }
 
+    environment {
+        AWS_DEFAULT_REGION = 'us-west-2'  // Replace with your AWS region
+    }
+
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        // Step to Install Docker, AWS CLI, and kubectl
+        stage('Install Docker, AWS CLI, and kubectl') {
+            steps {
+                script {
+                    container('ubuntu') {
+                        // Install Docker
+                        sh '''
+                            apt-get update
+                            apt-get install -y docker.io
+                        '''
+
+                        // Install AWS CLI
+                        sh '''
+                            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                            unzip awscliv2.zip
+                            sudo ./aws/install
+                            aws --version
+                        '''
+
+                        // Install kubectl
+                        sh '''
+                            curl -LO https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl
+                            chmod +x kubectl
+                            sudo mv kubectl /usr/local/bin/
+                            kubectl version --client
+                        '''
+                    }
+                }
             }
         }
 
@@ -56,14 +80,20 @@ spec:
             steps {
                 script {
                     container('ubuntu') {
-                        // Log in to AWS ECR
-                        sh '''
-                            aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 908027419216.dkr.ecr.us-west-2.amazonaws.com
-                        '''
-                        // Push the image to ECR
-                        sh '''
-                            docker push 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG}
-                        '''
+                        // Use Jenkins credentials to access AWS
+                        withCredentials([[
+                            $class: 'AmazonWebServicesCredentialsBinding', 
+                            credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
+                        ]]) {
+                            // Log in to AWS ECR
+                            sh '''
+                                aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin 908027419216.dkr.ecr.us-west-2.amazonaws.com
+                            '''
+                            // Push the image to ECR
+                            sh '''
+                                docker push 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v${IMAGE_TAG}
+                            '''
+                        }
                     }
                 }
             }
