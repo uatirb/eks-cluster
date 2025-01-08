@@ -47,14 +47,7 @@ spec:
                         $class: 'AmazonWebServicesCredentialsBinding', 
                         credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
                     ]]) {
-                        // Install Docker
-                        sh '''
-                            apt-get update
-                            apt-get install -y curl unzip
-                            apt-get install -y docker.io
-                        '''
-
-                        
+                      
 
                         // Install kubectl
                         sh '''
@@ -80,10 +73,9 @@ spec:
                     ]]) {
                         sh '''
                             // Install AWS CLI
-                            apk update && apk add --no-cache curl unzip
-                            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                            unzip awscliv2.zip
-                            ./aws/install
+                            apk update && apk add --no-cache curl unzip python3 py3-pip
+                            pip install awscli
+                        
                             aws --version
                         
                             aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 908027419216.dkr.ecr.us-west-2.amazonaws.com
