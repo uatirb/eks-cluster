@@ -102,13 +102,7 @@ spec:
             steps {
                 script {
                     container('kubectl') {
-                        withKubeCredentials(kubectlCredentials: [[
-                            caCertificate: '', 
-                            clusterName: 'k8-cluster', 
-                            contextName: '', 
-                            credentialsId: 'eks-secret', 
-                            namespace: 'default', 
-                            serverUrl: 'https://60CE00358BEF09B73D2F131A71EEB49A.gr7.us-west-2.eks.amazonaws.com'
+                        withKubeCredentials(kubectlCredentials: [[ caCertificate: '', clusterName: 'k8-cluster', contextName: '', credentialsId: 'eks-secret', namespace: 'default', serverUrl: 'https://60CE00358BEF09B73D2F131A71EEB49A.gr7.us-west-2.eks.amazonaws.com'
                         ]]) {
                             sh 'kubectl apply -f ${YAML_FILE} --namespace ${NAMESPACE}'
                         }
