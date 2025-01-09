@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: hello-world-container
-        image: 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:latest
+        image: 908027419216.dkr.ecr.us-west-2.amazonaws.com/eks-repository:v1
         ports:
         - containerPort: 80
       imagePullSecrets:
