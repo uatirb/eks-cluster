@@ -73,7 +73,7 @@ spec:
                         credentialsId: 'aws-credentials-id'  // Replace with your AWS credentials ID
                     ]]) {
                         sh '''
-                            // Install AWS CLI
+                            # Install AWS CLI
                             apk update && apk add --no-cache curl unzip python3 py3-pip
                             pip install awscli
                         
